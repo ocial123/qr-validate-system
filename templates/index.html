@@ -1,0 +1,17 @@
+
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>How it works</h2>
+  <ol>
+    <li>Set a <strong>VALIDATOR_KEY</strong> (secret) in env. On your phone only, visit
+      <code>/set-validator?key=YOUR_VALIDATOR_KEY</code> once. This drops a secure cookie on your device.</li>
+    <li>Generate QR codes in <a href="{{ url_for('admin') }}">Admin</a>. Each QR links to a unique token URL.</li>
+    <li>When <em>your</em> device scans a token URL, the server validates and marks it <strong>used</strong>.</li>
+    <li>If <em>anyone else</em> scans, they only see a neutral page and nothing changes.</li>
+  </ol>
+  <p>Tip: Deploy free on Render/Railway. Use <code>Procfile</code> and <code>requirements.txt</code>.</p>
+  <p><a href="{{ url_for('logout_validator') }}">(Reset validator cookie on this device)</a></p>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+</section>
+{% endblock %}

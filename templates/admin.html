@@ -1,0 +1,54 @@
+
+{% extends "base.html" %}
+{% block content %}
+  {% if login %}
+    <section class="card">
+      <h2>Admin Login</h2>
+      <form method="post" action="{{ url_for('admin') }}">
+        <label>Password <input type="password" name="password" required></label>
+        <button type="submit">Login</button>
+      </form>
+      <p>Or append <code>?password=...</code> to the URL for quick access (avoid on shared devices).</p>
+    </section>
+  {% else %}
+    <section class="card">
+      <h2>Admin</h2>
+      <p>Total tokens: <strong>{{ total or 0 }}</strong> &middot; Used: <strong>{{ used or 0 }}</strong></p>
+      <form method="post" action="{{ url_for('admin_generate') }}">
+        <label>How many? <input type="number" name="count" min="1" max="1000" value="10"></label>
+        <label>Prefix (optional) <input name="prefix" placeholder="VIP-"></label>
+        <label>Label (optional) <input name="label" placeholder="Day 1 Entry"></label>
+        <button type="submit">Generate Tokens</button>
+      </form>
+      <p>
+        <a class="btn" href="{{ url_for('admin_export') }}">Download CSV</a>
+        <a class="btn" href="{{ url_for('admin_qrs') }}">Show QR Grid</a>
+      </p>
+    </section>
+
+    {% if just_created %}
+      <section class="card">
+        <h3>New tokens</h3>
+        <ol>
+          {% for t,u in just_created %}
+            <li><code>{{ t }}</code> — <a href="{{ u }}" target="_blank">{{ u }}</a></li>
+          {% endfor %}
+        </ol>
+      </section>
+    {% endif %}
+
+    {% if qr_grid %}
+      <section class="card">
+        <h3>Printable QR Grid (latest 200)</h3>
+        <div class="grid">
+          {% for q in qr_grid %}
+            <figure>
+              <img src="{{ q.data_url }}" alt="QR {{ q.token }}">
+              <figcaption><small>{{ q.token }}</small></figcaption>
+            </figure>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+  {% endif %}
+{% endblock %}

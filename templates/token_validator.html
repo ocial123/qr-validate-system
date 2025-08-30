@@ -1,0 +1,20 @@
+
+{% extends "base.html" %}
+{% block content %}
+<section class="card center">
+  {% if status == "validated" %}
+    <h2 class="ok">VALID ✅</h2>
+    <p>Token: <code>{{ token }}</code></p>
+    {% if label %}<p>Label: {{ label }}</p>{% endif %}
+    <p>Marked used at: {{ used_at }}</p>
+  {% elif status == "already_used" %}
+    <h2 class="bad">ALREADY USED ❌</h2>
+    <p>Token: <code>{{ token }}</code></p>
+    {% if label %}<p>Label: {{ label }}</p>{% endif %}
+    <p>Used at: {{ used_at }}</p>
+  {% elif status == "not_found" %}
+    <h2 class="bad">INVALID / NOT FOUND ❌</h2>
+    <p>This token does not exist.</p>
+  {% endif %}
+</section>
+{% endblock %}
