@@ -1,53 +1,61 @@
 import os
 import uuid
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "default_secret")
+app.wsgi_app = ProxyFix(app.wsgi_app)
 
-# In-memory DB (you can switch to SQLite later if needed)
-tokens = {}
+# ENV variables
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+VALIDATOR_KEY = os.getenv("VALIDATOR_KEY", "secret123")
+BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
 
-ADMIN_PASSCODE = os.getenv("VALIDATOR_CODE", "1234")  # secret code from env
+# Store QR codes (temporary memory)
+qr_store = {}
 
 @app.route("/")
-def index():
-    return render_template("index.html", tokens=tokens)
+def landing():
+    return render_template("landing.html")
 
-@app.route("/generate", methods=["POST"])
-def generate():
-    token = str(uuid.uuid4())
-    tokens[token] = {"used": False}
-    return render_template("token_public.html", token=token)
+@app.route("/admin", methods=["GET", "POST"])
+def admin():
+    if request.method == "POST":
+        password = request.form.get("password")
+        if password == ADMIN_PASSWORD:
+            return redirect(url_for("dashboard"))
+        else:
+            flash("Invalid admin password!", "danger")
+    return render_template("enter_passcode.html")
 
-# Guest scan → always useless
-@app.route("/t/<token>")
-def guest_view(token):
-    if token not in tokens:
-        return "❌ Invalid QR", 404
-    if tokens[token]["used"]:
-        return "❌ QR already used", 400
-    return "⚠️ Please wait for staff to validate"
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html", qr_codes=qr_store)
 
-# Admin scan & validate
-@app.route("/validate/<token>", methods=["GET", "POST"])
-def validate(token):
-    if token not in tokens:
-        return "❌ Invalid QR", 404
+@app.route("/generate_qr")
+def generate_qr():
+    qr_id = str(uuid.uuid4())
+    qr_store[qr_id] = {"valid": True}
+    qr_url = f"{BASE_URL}/scan/{qr_id}"
+    return render_template("public_token.html", qr_url=qr_url)
+
+@app.route("/scan/<qr_id>", methods=["GET", "POST"])
+def scan(qr_id):
+    qr = qr_store.get(qr_id)
+
+    if not qr or not qr["valid"]:
+        return render_template("scan.html", message="❌ QR Code Invalid or Already Used")
 
     if request.method == "POST":
-        code = request.form.get("code")
-        if code != ADMIN_PASSCODE:
-            return "❌ Wrong passcode", 403
-        if tokens[token]["used"]:
-            return "❌ QR already used", 400
+        validator_input = request.form.get("validator")
+        if validator_input == VALIDATOR_KEY:
+            qr["valid"] = False  # expire after one use
+            return render_template("scan.html", message="✅ QR Code Validated! Allow entry.")
+        else:
+            return render_template("scan.html", message="❌ Invalid Validator Key")
 
-        # mark as used
-        tokens[token]["used"] = True
-        return "✅ QR validated & expired!"
+    return render_template("scan.html", message="⚠️ Please enter validator code to confirm")
 
-    return '''
-        <form method="POST">
-            <input type="password" name="code" placeholder="Enter passcode"/>
-            <button type="submit">Validate</button>
-        </form>
-    '''
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
